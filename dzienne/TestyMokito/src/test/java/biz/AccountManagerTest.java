@@ -92,5 +92,66 @@ class AccountManagerTest {
         boolean result = target.paymentIn(user,amount,desc,accId);
         //THEN
         assertFalse(result);
+        verify(mockDao, atMostOnce()).findAccountById(eq(accId));
     }
+
+    @Test
+    void paymentInWithNegativeAmount() throws SQLException {
+        // GIVEN
+        int accId = 13;
+        User user = new User();
+        Account a = mock(Account.class);
+        String desc = "Wpłata";
+        double amount = -123;
+
+        // WHEN
+        boolean result = target.paymentIn(user, amount, desc, accId);
+
+        // THEN
+        assertFalse(result);
+        verify(a, never()).income(anyDouble());
+        verify(mockDao, atMostOnce()).findAccountById(eq(accId));
+        verify(mockDao, never()).updateAccountState(any(Account.class));
+        verify(mockHistory, never()).logOperation(any(Operation.class), eq(true));
+    }
+    @Test
+    void paymentInWithNullUser() throws SQLException {
+        // GIVEN
+        int accId = 13;
+        Account a = mock(Account.class);
+        String desc = "Wpłata";
+        double amount = 123;
+
+        // WHEN
+        boolean result = target.paymentIn(null, amount, desc, accId);
+
+        // THEN
+        assertFalse(result);
+        verify(a, never()).income(anyDouble());
+        verify(mockDao, atMostOnce()).findAccountById(eq(accId));
+        verify(mockDao, never()).updateAccountState(any(Account.class));
+        verify(mockHistory, never()).logOperation(any(Operation.class), eq(true));
+    }
+    @Test
+    void paymentInWithDatabaseUpdateFailure() throws SQLException {
+        // GIVEN
+        int accId = 13;
+        User user = new User();
+        Account a = mock(Account.class);
+        String desc = "Wpłata";
+        double amount = 123;
+        when(mockDao.findAccountById(eq(accId))).thenReturn(a);
+        when(mockDao.updateAccountState(eq(a))).thenReturn(false);
+
+        // WHEN
+        boolean result = target.paymentIn(user, amount, desc, accId);
+
+        // THEN
+        assertFalse(result);
+        verify(a, times(1)).income(amount);
+        verify(mockDao, atMostOnce()).findAccountById(eq(accId));
+        verify(mockDao, atMostOnce()).updateAccountState(eq(a));
+        verify(mockHistory, never()).logOperation(any(Operation.class), eq(true));
+    }
+
 }

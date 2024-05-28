@@ -24,7 +24,15 @@ public class AccountManager {
     User loggedUser=null;
 
     public boolean paymentIn(User user, double ammount, String description, int accountId) throws SQLException {
+        if (user == null || ammount <= 0) {
+            return false;
+        }
         Account account = dao.findAccountById(accountId);
+
+        if (account == null) {
+            return false;
+        }
+
         Operation operation = new PaymentIn(user, ammount,description, account);
         boolean success = account.income(ammount);
         success = dao.updateAccountState(account);
